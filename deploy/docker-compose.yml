@@ -22,9 +22,7 @@ services:
 
   # GitHub Actions Dashboard
   dashboard:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: ghcr.io/antewall/github-actions-dashboard:latest
     ports:
       - "3000:3000"
     environment:
