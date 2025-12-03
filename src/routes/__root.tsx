@@ -1,16 +1,24 @@
-import type { QueryClient } from "@tanstack/react-query";
+import { ConvexQueryClient } from "@convex-dev/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
+import { ConvexProvider } from "convex/react";
 import type * as React from "react";
+import { useMemo } from "react";
+import { getConvexUrl } from "@/router";
 import appCss from "@/styles/app.css?url";
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
 }>()({
+	loader: async () => {
+		const convexUrl = await getConvexUrl();
+		return { convexUrl };
+	},
 	head: () => ({
 		meta: [
 			{
@@ -67,10 +75,31 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootComponent() {
+	const { convexUrl } = Route.useLoaderData();
+
+	// Create Convex client and QueryClient - memoized to prevent recreation
+	const { convexQueryClient, queryClient } = useMemo(() => {
+		const convexQueryClient = new ConvexQueryClient(convexUrl);
+		const queryClient = new QueryClient({
+			defaultOptions: {
+				queries: {
+					queryKeyHashFn: convexQueryClient.hashFn(),
+					queryFn: convexQueryClient.queryFn(),
+				},
+			},
+		});
+		convexQueryClient.connect(queryClient);
+		return { convexQueryClient, queryClient };
+	}, [convexUrl]);
+
 	return (
-		<RootDocument>
-			<Outlet />
-		</RootDocument>
+		<QueryClientProvider client={queryClient}>
+			<ConvexProvider client={convexQueryClient.convexClient}>
+				<RootDocument>
+					<Outlet />
+				</RootDocument>
+			</ConvexProvider>
+		</QueryClientProvider>
 	);
 }
 
