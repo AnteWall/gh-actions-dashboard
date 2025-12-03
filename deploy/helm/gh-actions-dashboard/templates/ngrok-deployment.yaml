@@ -1,0 +1,90 @@
+{{- if .Values.ngrok.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gh-actions-dashboard.ngrok.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gh-actions-dashboard.ngrok.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gh-actions-dashboard.ngrok.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.ngrok.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gh-actions-dashboard.ngrok.labels" . | nindent 8 }}
+        {{- with .Values.ngrok.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "gh-actions-dashboard.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gh-actions-dashboard.serviceAccountName" . }}
+      {{- with .Values.ngrok.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.dashboard.enabled }}
+      initContainers:
+        - name: wait-for-dashboard
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Dashboard to be ready..."
+              until wget -q --spider http://{{ include "gh-actions-dashboard.dashboard.fullname" . }}:{{ .Values.dashboard.service.port }}; do
+                echo "Dashboard not ready yet, waiting..."
+                sleep 2
+              done
+              echo "Dashboard is ready!"
+      {{- end }}
+      containers:
+        - name: ngrok
+          {{- with .Values.ngrok.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.ngrok.image.repository }}:{{ .Values.ngrok.image.tag }}"
+          imagePullPolicy: {{ .Values.ngrok.image.pullPolicy }}
+          args:
+            - http
+            {{- if .Values.ngrok.domain }}
+            - --domain
+            - {{ .Values.ngrok.domain | quote }}
+            {{- end }}
+            - {{ include "gh-actions-dashboard.dashboard.fullname" . }}:{{ .Values.dashboard.service.port }}
+            - --log
+            - stdout
+          ports:
+            - name: web
+              containerPort: 4040
+              protocol: TCP
+          env:
+            - name: NGROK_AUTHTOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gh-actions-dashboard.secretName" . }}
+                  key: ngrok-authtoken
+          {{- with .Values.ngrok.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.ngrok.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ngrok.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ngrok.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

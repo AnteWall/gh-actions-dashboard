@@ -1,6 +1,54 @@
 # Deployment Guide
 
-This guide explains how to deploy the GitHub Actions Dashboard using Docker Compose with a self-hosted Convex backend.
+This guide explains how to deploy the GitHub Actions Dashboard.
+
+## Deployment Options
+
+- **[Kubernetes (Helm)](#kubernetes-helm)** - Recommended for production
+- **[Docker Compose](#docker-compose)** - Simple self-hosted deployment
+
+---
+
+## Kubernetes (Helm)
+
+Deploy to Kubernetes using the official Helm chart from GitHub Container Registry.
+
+### Quick Start
+
+```bash
+helm install gh-actions-dashboard oci://ghcr.io/antewall/charts/gh-actions-dashboard \
+  --set secrets.githubWebhookSecret="your-webhook-secret"
+```
+
+### With ngrok (Development)
+
+```bash
+helm install gh-actions-dashboard oci://ghcr.io/antewall/charts/gh-actions-dashboard \
+  --set ngrok.enabled=true \
+  --set ngrok.domain="your-subdomain.ngrok-free.dev" \
+  --set secrets.githubWebhookSecret="your-webhook-secret" \
+  --set secrets.ngrokAuthToken="your-ngrok-token"
+```
+
+### With Ingress (Production)
+
+```bash
+helm install gh-actions-dashboard oci://ghcr.io/antewall/charts/gh-actions-dashboard \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set "ingress.hosts[0].host=dashboard.example.com" \
+  --set "ingress.hosts[0].paths[0].path=/" \
+  --set "ingress.hosts[0].paths[0].pathType=Prefix" \
+  --set secrets.githubWebhookSecret="your-webhook-secret"
+```
+
+For full documentation, see the [Helm chart README](./helm/gh-actions-dashboard/README.md).
+
+---
+
+## Docker Compose
+
+This section explains how to deploy using Docker Compose with a self-hosted Convex backend.
 
 ## Architecture
 

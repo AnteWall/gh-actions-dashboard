@@ -1,0 +1,26 @@
+{{- if .Values.convex.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gh-actions-dashboard.convex.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gh-actions-dashboard.convex.labels" . | nindent 4 }}
+  {{- with .Values.convex.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.convex.service.type }}
+  ports:
+    - name: api
+      port: {{ .Values.convex.service.apiPort }}
+      targetPort: api
+      protocol: TCP
+    - name: http-actions
+      port: {{ .Values.convex.service.httpActionsPort }}
+      targetPort: http-actions
+      protocol: TCP
+  selector:
+    {{- include "gh-actions-dashboard.convex.selectorLabels" . | nindent 4 }}
+{{- end }}

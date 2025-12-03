@@ -1,0 +1,55 @@
+# Example values for production with Ingress
+#
+# Usage with OCI registry:
+#   helm install gh-actions-dashboard oci://ghcr.io/antewall/charts/gh-actions-dashboard -f values-prod.yaml
+#
+# Usage from source:
+#   helm install gh-actions-dashboard ./deploy/helm/gh-actions-dashboard -f deploy/helm/gh-actions-dashboard/examples/values-prod.yaml
+
+# Disable ngrok in production
+ngrok:
+  enabled: false
+
+# Use existing secret for sensitive values
+secrets:
+  existingSecret: "gh-actions-dashboard-secrets"
+
+# Production resources
+convex:
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  persistence:
+    size: 50Gi
+    storageClass: "fast-ssd"  # Adjust to your storage class
+
+dashboard:
+  replicas: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Enable Ingress with TLS
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: actions-dashboard.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: actions-dashboard-tls
+      hosts:
+        - actions-dashboard.example.com

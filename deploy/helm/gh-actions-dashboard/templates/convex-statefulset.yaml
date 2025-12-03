@@ -1,0 +1,107 @@
+{{- if .Values.convex.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "gh-actions-dashboard.convex.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gh-actions-dashboard.convex.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.convex.replicas }}
+  serviceName: {{ include "gh-actions-dashboard.convex.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "gh-actions-dashboard.convex.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.convex.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gh-actions-dashboard.convex.labels" . | nindent 8 }}
+        {{- with .Values.convex.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "gh-actions-dashboard.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gh-actions-dashboard.serviceAccountName" . }}
+      {{- with .Values.convex.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: convex
+          {{- with .Values.convex.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.convex.image.repository }}:{{ .Values.convex.image.tag }}"
+          imagePullPolicy: {{ .Values.convex.image.pullPolicy }}
+          ports:
+            - name: api
+              containerPort: 3210
+              protocol: TCP
+            - name: http-actions
+              containerPort: 3211
+              protocol: TCP
+          env:
+            - name: CONVEX_CLOUD_ORIGIN
+              value: {{ include "gh-actions-dashboard.convex.internalUrl" . | quote }}
+            - name: CONVEX_SITE_ORIGIN
+              value: {{ include "gh-actions-dashboard.convex.httpActionsUrl" . | quote }}
+            - name: DOCUMENT_RETENTION_DELAY
+              value: {{ .Values.convex.config.documentRetentionDelay | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.convex.config.rustLog | quote }}
+          {{- with .Values.convex.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.convex.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.convex.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: convex-data
+              mountPath: /convex_data
+      {{- with .Values.convex.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.convex.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.convex.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.convex.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: convex-data
+        {{- with .Values.convex.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.convex.persistence.accessMode }}
+        {{- if .Values.convex.persistence.storageClass }}
+        storageClassName: {{ .Values.convex.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.convex.persistence.size }}
+  {{- else }}
+  volumes:
+    - name: convex-data
+      emptyDir: {}
+  {{- end }}
+{{- end }}

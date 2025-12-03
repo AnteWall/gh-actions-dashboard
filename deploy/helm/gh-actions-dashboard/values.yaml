@@ -1,0 +1,244 @@
+# Default values for gh-actions-dashboard
+
+# -- Override the name of the chart
+nameOverride: ""
+# -- Override the full name of the chart
+fullnameOverride: ""
+
+# Global settings
+global:
+  # -- Image pull secrets for all deployments
+  imagePullSecrets: []
+
+# Convex backend configuration
+convex:
+  # -- Enable Convex backend deployment
+  enabled: true
+  image:
+    # -- Convex backend image repository
+    repository: ghcr.io/get-convex/convex-backend
+    # -- Convex backend image tag
+    tag: latest
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+  # -- Number of replicas (should be 1 for SQLite)
+  replicas: 1
+  # -- Resource requests and limits
+  resources: {}
+    # limits:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+  # -- Node selector for pod scheduling
+  nodeSelector: {}
+  # -- Tolerations for pod scheduling
+  tolerations: []
+  # -- Affinity rules for pod scheduling
+  affinity: {}
+  # -- Additional pod annotations
+  podAnnotations: {}
+  # -- Additional pod labels
+  podLabels: {}
+  # -- Security context for the pod
+  podSecurityContext: {}
+  # -- Security context for the container
+  securityContext: {}
+  # -- Service configuration
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- API port (for Convex API)
+    apiPort: 3210
+    # -- HTTP Actions port
+    httpActionsPort: 3211
+    # -- Additional service annotations
+    annotations: {}
+  # -- Persistence configuration for SQLite
+  persistence:
+    # -- Enable persistence
+    enabled: true
+    # -- Storage class for PVC (empty uses default)
+    storageClass: ""
+    # -- Access mode for PVC
+    accessMode: ReadWriteOnce
+    # -- Size of the PVC
+    size: 10Gi
+    # -- Annotations for the PVC
+    annotations: {}
+  # -- Environment configuration
+  config:
+    # -- Document retention delay in seconds (default 48 hours)
+    documentRetentionDelay: "172800"
+    # -- Rust log level
+    rustLog: "info"
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /version
+      port: api
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /version
+      port: api
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Dashboard configuration
+dashboard:
+  # -- Enable dashboard deployment
+  enabled: true
+  image:
+    # -- Dashboard image repository
+    repository: ghcr.io/antewall/gh-actions-dashboard
+    # -- Dashboard image tag
+    tag: latest
+    # -- Image pull policy
+    pullPolicy: Always
+  # -- Number of replicas
+  replicas: 1
+  # -- Resource requests and limits
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+  # -- Node selector for pod scheduling
+  nodeSelector: {}
+  # -- Tolerations for pod scheduling
+  tolerations: []
+  # -- Affinity rules for pod scheduling
+  affinity: {}
+  # -- Additional pod annotations
+  podAnnotations: {}
+  # -- Additional pod labels
+  podLabels: {}
+  # -- Security context for the pod
+  podSecurityContext: {}
+  # -- Security context for the container
+  securityContext: {}
+  # -- Service configuration
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- Service port
+    port: 3000
+    # -- Additional service annotations
+    annotations: {}
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# ngrok configuration (optional)
+ngrok:
+  # -- Enable ngrok tunnel deployment
+  enabled: false
+  # -- Custom ngrok domain (e.g., my-app.ngrok-free.dev or custom domain)
+  # If not set, ngrok will generate a random URL
+  domain: ""
+  image:
+    # -- ngrok image repository
+    repository: ngrok/ngrok
+    # -- ngrok image tag
+    tag: latest
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+  # -- Resource requests and limits
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 50m
+    #   memory: 64Mi
+  # -- Node selector for pod scheduling
+  nodeSelector: {}
+  # -- Tolerations for pod scheduling
+  tolerations: []
+  # -- Affinity rules for pod scheduling
+  affinity: {}
+  # -- Additional pod annotations
+  podAnnotations: {}
+  # -- Additional pod labels
+  podLabels: {}
+  # -- Security context for the pod
+  podSecurityContext: {}
+  # -- Security context for the container
+  securityContext: {}
+  # -- Service configuration for ngrok web interface
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- Web interface port
+    port: 4040
+    # -- Additional service annotations
+    annotations: {}
+
+# Secrets configuration
+secrets:
+  # -- Use an existing secret instead of creating one
+  # If set, the chart will not create a secret and will use this one instead
+  # The secret must contain keys: github-webhook-secret, ngrok-authtoken (if ngrok enabled), convex-admin-key
+  existingSecret: ""
+  # -- GitHub webhook secret (required if not using existingSecret)
+  githubWebhookSecret: ""
+  # -- ngrok auth token (required if ngrok.enabled and not using existingSecret)
+  ngrokAuthToken: ""
+  # -- Convex admin key (optional, for function deployment)
+  convexAdminKey: ""
+
+# Ingress configuration
+ingress:
+  # -- Enable ingress
+  enabled: false
+  # -- Ingress class name
+  className: ""
+  # -- Additional ingress annotations
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  # -- Ingress hosts configuration
+  hosts:
+    - host: dashboard.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration
+  tls: []
+    # - secretName: dashboard-tls
+    #   hosts:
+    #     - dashboard.example.com
+
+# ServiceAccount configuration
+serviceAccount:
+  # -- Create a service account
+  create: true
+  # -- Annotations for the service account
+  annotations: {}
+  # -- Name of the service account (auto-generated if empty)
+  name: ""

@@ -1,0 +1,22 @@
+{{- if .Values.ngrok.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gh-actions-dashboard.ngrok.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gh-actions-dashboard.ngrok.labels" . | nindent 4 }}
+  {{- with .Values.ngrok.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.ngrok.service.type }}
+  ports:
+    - name: web
+      port: {{ .Values.ngrok.service.port }}
+      targetPort: web
+      protocol: TCP
+  selector:
+    {{- include "gh-actions-dashboard.ngrok.selectorLabels" . | nindent 4 }}
+{{- end }}

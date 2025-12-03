@@ -1,0 +1,96 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named: {{ .Release.Name }}
+
+=== GETTING STARTED ===
+
+{{- if .Values.dashboard.enabled }}
+
+1. Get the Dashboard URL:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.dashboard.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "gh-actions-dashboard.dashboard.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.dashboard.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status by running:
+           kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "gh-actions-dashboard.dashboard.fullname" . }}
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "gh-actions-dashboard.dashboard.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.dashboard.service.port }}
+{{- else if contains "ClusterIP" .Values.dashboard.service.type }}
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "gh-actions-dashboard.dashboard.fullname" . }} 3000:{{ .Values.dashboard.service.port }}
+  Then visit: http://localhost:3000
+{{- end }}
+{{- end }}
+
+{{- if .Values.ngrok.enabled }}
+
+2. ngrok Tunnel:
+{{- if .Values.ngrok.domain }}
+  Your webhook URL (custom domain): https://{{ .Values.ngrok.domain }}/api/webhooks
+{{- else }}
+  The ngrok tunnel URL will be displayed in the ngrok logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=ngrok,app.kubernetes.io/instance={{ .Release.Name }}" -f
+{{- end }}
+
+  Access the ngrok web interface:
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "gh-actions-dashboard.ngrok.fullname" . }} 4040:{{ .Values.ngrok.service.port }}
+  Then visit: http://localhost:4040
+{{- end }}
+
+=== GITHUB WEBHOOK CONFIGURATION ===
+
+Configure your GitHub repository webhook with the following settings:
+
+{{- if and .Values.ngrok.enabled .Values.ngrok.domain }}
+- Payload URL: https://{{ .Values.ngrok.domain }}/api/webhooks
+{{- else if .Values.ngrok.enabled }}
+- Payload URL: <NGROK_TUNNEL_URL>/api/webhooks (check ngrok logs for URL)
+{{- else }}
+- Payload URL: <YOUR_DASHBOARD_URL>/api/webhooks
+{{- end }}
+- Content type: application/json
+- Secret: (the value you set for secrets.githubWebhookSecret)
+- Events: Select "Workflow runs"
+
+{{- if .Values.convex.enabled }}
+
+=== CONVEX BACKEND ===
+
+The Convex backend is running at:
+  Internal: {{ include "gh-actions-dashboard.convex.internalUrl" . }}
+  HTTP Actions: {{ include "gh-actions-dashboard.convex.httpActionsUrl" . }}
+
+To deploy Convex functions, you'll need to:
+1. Port-forward the Convex API:
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "gh-actions-dashboard.convex.fullname" . }} 3210:{{ .Values.convex.service.apiPort }}
+
+2. Set environment variables and deploy:
+   export CONVEX_SELF_HOSTED_URL=http://localhost:3210
+   export CONVEX_SELF_HOSTED_ADMIN_KEY=<your-admin-key>
+   npx convex deploy
+{{- end }}
+
+=== TROUBLESHOOTING ===
+
+View logs:
+{{- if .Values.dashboard.enabled }}
+  Dashboard: kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=dashboard,app.kubernetes.io/instance={{ .Release.Name }}" -f
+{{- end }}
+{{- if .Values.convex.enabled }}
+  Convex:    kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=convex,app.kubernetes.io/instance={{ .Release.Name }}" -f
+{{- end }}
+{{- if .Values.ngrok.enabled }}
+  ngrok:     kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=ngrok,app.kubernetes.io/instance={{ .Release.Name }}" -f
+{{- end }}
+
+Check pod status:
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+For more information, visit: {{ .Chart.Home }}
