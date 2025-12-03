@@ -24,8 +24,11 @@ WORKDIR /app
 COPY --from=builder /app/package.json /app/bun.lock ./
 RUN bun install --frozen-lockfile --production
 
-# Copy built output
+# Copy built output (both server and client assets)
 COPY --from=builder /app/dist ./dist
+
+# Copy the server.ts file for Bun
+COPY --from=builder /app/server.ts ./server.ts
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -33,5 +36,5 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-# Run with bun
-CMD ["bun", "dist/server/server.js"]
+# Run with bun using the custom server
+CMD ["bun", "run", "server.ts"]
