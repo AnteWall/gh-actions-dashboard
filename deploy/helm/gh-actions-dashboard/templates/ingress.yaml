@@ -1,4 +1,6 @@
 {{- if .Values.ingress.enabled }}
+---
+# Dashboard Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -14,29 +16,69 @@ spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
-  {{- if .Values.ingress.tls }}
+  {{- if .Values.ingress.dashboard.tls.enabled }}
   tls:
-    {{- range .Values.ingress.tls }}
     - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
+        - {{ .Values.ingress.dashboard.host | quote }}
+      {{- if .Values.ingress.dashboard.tls.secretName }}
+      secretName: {{ .Values.ingress.dashboard.tls.secretName }}
+      {{- end }}
   {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    - host: {{ .Values.ingress.dashboard.host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
+          - path: {{ .Values.ingress.dashboard.path }}
+            pathType: {{ .Values.ingress.dashboard.pathType }}
             backend:
               service:
-                name: {{ include "gh-actions-dashboard.dashboard.fullname" $ }}
+                name: {{ include "gh-actions-dashboard.dashboard.fullname" . }}
                 port:
                   name: http
-          {{- end }}
+{{- if and .Values.convex.enabled .Values.ingress.convex.enabled }}
+---
+# Convex Backend Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "gh-actions-dashboard.convex.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gh-actions-dashboard.convex.labels" . | nindent 4 }}
+  annotations:
+    # WebSocket support for nginx ingress controller
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri"
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with .Values.ingress.convex.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.convex.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.convex.host | quote }}
+      {{- if .Values.ingress.convex.tls.secretName }}
+      secretName: {{ .Values.ingress.convex.tls.secretName }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.convex.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.convex.path }}
+            pathType: {{ .Values.ingress.convex.pathType }}
+            backend:
+              service:
+                name: {{ include "gh-actions-dashboard.convex.fullname" . }}
+                port:
+                  name: api
+{{- end }}
 {{- end }}

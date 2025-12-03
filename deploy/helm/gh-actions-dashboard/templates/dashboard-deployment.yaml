@@ -62,10 +62,12 @@ spec:
             - name: PORT
               value: "3000"
             {{- if .Values.convex.enabled }}
+            # Internal URL for server-side requests (SSR, webhooks)
             - name: CONVEX_URL
               value: {{ include "gh-actions-dashboard.convex.internalUrl" . | quote }}
-            - name: VITE_CONVEX_URL
-              value: {{ include "gh-actions-dashboard.convex.internalUrl" . | quote }}
+            # External URL for browser clients (WebSocket connections)
+            - name: CONVEX_PUBLIC_URL
+              value: {{ include "gh-actions-dashboard.convex.externalUrl" . | quote }}
             {{- end }}
             - name: GITHUB_WEBHOOK_SECRET
               valueFrom:

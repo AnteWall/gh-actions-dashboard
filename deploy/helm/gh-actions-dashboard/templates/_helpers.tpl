@@ -149,6 +149,26 @@ Convex internal URL
 {{- end }}
 
 {{/*
+Convex external URL (for browser clients)
+Uses ingress host if configured, otherwise falls back to internal URL
+*/}}
+{{- define "gh-actions-dashboard.convex.externalUrl" -}}
+{{- if and .Values.ingress.enabled .Values.ingress.convex.enabled }}
+{{- $scheme := ternary "https" "http" .Values.ingress.convex.tls.enabled }}
+{{- printf "%s://%s" $scheme .Values.ingress.convex.host }}
+{{- else if .Values.ngrok.enabled }}
+{{- if .Values.ngrok.domain }}
+{{- printf "https://%s" .Values.ngrok.domain }}
+{{- else }}
+{{- /* ngrok without custom domain - fall back to internal URL */ -}}
+{{- include "gh-actions-dashboard.convex.internalUrl" . }}
+{{- end }}
+{{- else }}
+{{- include "gh-actions-dashboard.convex.internalUrl" . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Convex HTTP Actions internal URL
 */}}
 {{- define "gh-actions-dashboard.convex.httpActionsUrl" -}}
