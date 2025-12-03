@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as myFunctions from "../myFunctions.js";
 import type * as queries from "../queries.js";
 import type * as workflowRuns from "../workflowRuns.js";
 
@@ -19,7 +18,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  myFunctions: typeof myFunctions;
   queries: typeof queries;
   workflowRuns: typeof workflowRuns;
 }>;

@@ -4,11 +4,10 @@ This guide explains how to deploy the GitHub Actions Dashboard using Docker Comp
 
 ## Architecture
 
-The deployment includes three services:
+The deployment includes two services:
 
 1. **convex-backend** - Self-hosted Convex backend (SQLite storage by default)
-2. **convex-dashboard** - Convex admin dashboard for managing data
-3. **dashboard** - The GitHub Actions Dashboard frontend
+2. **dashboard** - The GitHub Actions Dashboard frontend
 
 ## Prerequisites
 
@@ -62,7 +61,6 @@ The deployment includes three services:
 6. **Access the services:**
 
    - **Dashboard:** [http://localhost:3000](http://localhost:3000)
-   - **Convex Dashboard:** [http://localhost:6791](http://localhost:6791)
    - **Convex API:** [http://localhost:3210](http://localhost:3210)
 
 ## GitHub Webhook Setup
@@ -83,7 +81,6 @@ The deployment includes three services:
 | Dashboard | 3000 | GitHub Actions Dashboard UI |
 | Convex API | 3210 | Convex backend API |
 | Convex HTTP Actions | 3211 | Convex HTTP action endpoints |
-| Convex Dashboard | 6791 | Convex admin UI |
 
 ## Data Persistence
 
@@ -123,10 +120,6 @@ services:
       - CONVEX_CLOUD_ORIGIN=https://api.your-domain.com
       - CONVEX_SITE_ORIGIN=https://actions.your-domain.com
 
-  convex-dashboard:
-    environment:
-      - NEXT_PUBLIC_DEPLOYMENT_URL=https://api.your-domain.com
-
   dashboard:
     environment:
       - VITE_CONVEX_URL=https://api.your-domain.com
@@ -137,7 +130,6 @@ services:
 Set up nginx, Traefik, or Caddy to:
 - Forward `https://dashboard.example.com` → `localhost:3000`
 - Forward `https://api.example.com` → `localhost:3210`
-- Forward `https://convex.example.com` → `localhost:6791`
 
 ## Commands
 

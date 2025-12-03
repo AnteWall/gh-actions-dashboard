@@ -5,11 +5,24 @@ import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexProvider } from 'convex/react'
 import { routeTree } from './routeTree.gen'
 
-export function getRouter() {
-  const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!
-  if (!CONVEX_URL) {
-    console.error('missing envar CONVEX_URL')
+function getConvexUrl(): string {
+  // Check process.env first (for SSR/server-side)
+  if (typeof process !== 'undefined' && process.env?.CONVEX_URL) {
+    return process.env.CONVEX_URL
   }
+  if (typeof process !== 'undefined' && process.env?.VITE_CONVEX_URL) {
+    return process.env.VITE_CONVEX_URL
+  }
+  // Fall back to import.meta.env (for client-side)
+  const metaEnv = (import.meta as any).env
+  if (metaEnv?.VITE_CONVEX_URL) {
+    return metaEnv.VITE_CONVEX_URL
+  }
+  throw new Error('Missing CONVEX_URL or VITE_CONVEX_URL environment variable')
+}
+
+export function getRouter() {
+  const CONVEX_URL = getConvexUrl()
   const convexQueryClient = new ConvexQueryClient(CONVEX_URL)
 
   const queryClient: QueryClient = new QueryClient({

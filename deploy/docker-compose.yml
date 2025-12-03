@@ -22,13 +22,15 @@ services:
 
   # GitHub Actions Dashboard
   dashboard:
-    image: ghcr.io/antewall/github-actions-dashboard:latest
+    image: ghcr.io/antewall/gh-actions-dashboard:latest
+    pull_policy: always
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
       # Convex connection (points to self-hosted backend)
+      - CONVEX_URL=http://convex-backend:3210
       - VITE_CONVEX_URL=http://convex-backend:3210
       # GitHub webhook secret (must match your GitHub App/webhook config)
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
