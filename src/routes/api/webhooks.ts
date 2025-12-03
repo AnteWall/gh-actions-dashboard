@@ -1,12 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { Webhooks } from "@octokit/webhooks";
 import type { WorkflowRunEvent } from "@octokit/webhooks-types";
+import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 
-// Initialize Convex client lazily (using VITE_ prefix for client-side access)
+// Initialize Convex client lazily
 const getConvexClient = () => {
-    const url = process.env.VITE_CONVEX_URL || import.meta.env.VITE_CONVEX_URL;
+    // Check CONVEX_URL first (runtime), then fallback to VITE_ variants
+    const url =
+        process.env.CONVEX_URL ||
+        process.env.VITE_CONVEX_URL ||
+        import.meta.env.VITE_CONVEX_URL;
+    if (!url) {
+        throw new Error("CONVEX_URL environment variable is required");
+    }
     return new ConvexHttpClient(url as string);
 };
 
@@ -16,7 +23,7 @@ const getWebhooks = () => {
     const secret = process.env.GITHUB_WEBHOOK_SECRET;
     if (!secret) {
         throw new Error(
-            "GITHUB_WEBHOOK_SECRET environment variable is required. Add it to your .env file."
+            "GITHUB_WEBHOOK_SECRET environment variable is required. Add it to your .env file.",
         );
     }
     return new Webhooks({ secret });
@@ -31,9 +38,9 @@ export const Route = createFileRoute("/api/webhooks")({
 
                 try {
                     let body = await request.text();
-                    let signature = request.headers.get("x-hub-signature-256") || "";
-                    let event = request.headers.get("x-github-event") || "";
-                    let deliveryId = request.headers.get("x-github-delivery") || "";
+                    const signature = request.headers.get("x-hub-signature-256") || "";
+                    const event = request.headers.get("x-github-event") || "";
+                    const deliveryId = request.headers.get("x-github-delivery") || "";
                     let isSmeeProxy = false;
 
                     // Handle smee.io wrapper - it wraps the payload in a JSON object
@@ -45,11 +52,15 @@ export const Route = createFileRoute("/api/webhooks")({
                             if (parsed.body && typeof parsed.body === "string") {
                                 body = parsed.body;
                                 isSmeeProxy = true;
-                                console.log("[Webhook] Detected smee.io wrapper, extracted original payload");
+                                console.log(
+                                    "[Webhook] Detected smee.io wrapper, extracted original payload",
+                                );
                             } else if (parsed.payload && typeof parsed.payload === "string") {
                                 body = parsed.payload;
                                 isSmeeProxy = true;
-                                console.log("[Webhook] Detected smee.io wrapper (payload field), extracted original payload");
+                                console.log(
+                                    "[Webhook] Detected smee.io wrapper (payload field), extracted original payload",
+                                );
                             }
                         } catch {
                             // Not a wrapper, continue with original body
@@ -57,35 +68,43 @@ export const Route = createFileRoute("/api/webhooks")({
                     }
 
                     console.log(
-                        `[Webhook] Received ${event} event (delivery: ${deliveryId})`
+                        `[Webhook] Received ${event} event (delivery: ${deliveryId})`,
                     );
 
                     // Verify the webhook signature (skip for smee.io in development as it can modify the payload)
-                    const skipVerification = isSmeeProxy && process.env.NODE_ENV !== "production";
+                    const skipVerification =
+                        isSmeeProxy && process.env.NODE_ENV !== "production";
 
                     if (skipVerification) {
-                        console.log("[Webhook] Skipping signature verification for smee.io proxy in development");
+                        console.log(
+                            "[Webhook] Skipping signature verification for smee.io proxy in development",
+                        );
                     } else {
                         try {
                             const isValid = await webhooks.verify(body, signature);
                             if (!isValid) {
-                                console.error("[Webhook] Invalid signature - verification returned false");
+                                console.error(
+                                    "[Webhook] Invalid signature - verification returned false",
+                                );
                                 return new Response(
                                     JSON.stringify({ error: "Invalid signature" }),
                                     {
                                         status: 401,
                                         headers: { "Content-Type": "application/json" },
-                                    }
+                                    },
                                 );
                             }
                         } catch (verifyError) {
-                            console.error("[Webhook] Signature verification error:", verifyError);
+                            console.error(
+                                "[Webhook] Signature verification error:",
+                                verifyError,
+                            );
                             return new Response(
                                 JSON.stringify({ error: "Signature verification failed" }),
                                 {
                                     status: 401,
                                     headers: { "Content-Type": "application/json" },
-                                }
+                                },
                             );
                         }
                     }
@@ -105,7 +124,7 @@ export const Route = createFileRoute("/api/webhooks")({
                         {
                             status: 200,
                             headers: { "Content-Type": "application/json" },
-                        }
+                        },
                     );
                 } catch (error) {
                     console.error("[Webhook] Error processing webhook:", error);
@@ -114,7 +133,7 @@ export const Route = createFileRoute("/api/webhooks")({
                         {
                             status: 500,
                             headers: { "Content-Type": "application/json" },
-                        }
+                        },
                     );
                 }
             },
@@ -124,12 +143,12 @@ export const Route = createFileRoute("/api/webhooks")({
 
 async function handleWorkflowRunEvent(
     event: WorkflowRunEvent,
-    convex: ConvexHttpClient
+    convex: ConvexHttpClient,
 ) {
     const { action, workflow_run, repository } = event;
 
     console.log(
-        `[Webhook] workflow_run.${action}: ${repository.full_name} - ${workflow_run.name} #${workflow_run.run_number}`
+        `[Webhook] workflow_run.${action}: ${repository.full_name} - ${workflow_run.name} #${workflow_run.run_number}`,
     );
 
     // Map status to our schema types
@@ -165,7 +184,7 @@ async function handleWorkflowRunEvent(
         });
 
         console.log(
-            `[Webhook] Successfully stored workflow run ${workflow_run.id}`
+            `[Webhook] Successfully stored workflow run ${workflow_run.id}`,
         );
     } catch (error) {
         console.error("[Webhook] Error storing workflow run:", error);
@@ -175,7 +194,7 @@ async function handleWorkflowRunEvent(
 
 // Map GitHub status to our schema
 function mapStatus(
-    status: string | null
+    status: string | null,
 ):
     | "requested"
     | "in_progress"
@@ -203,7 +222,7 @@ function mapStatus(
 
 // Map GitHub conclusion to our schema
 function mapConclusion(
-    conclusion: string
+    conclusion: string,
 ):
     | "success"
     | "failure"
