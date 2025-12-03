@@ -96,6 +96,11 @@ convex:
     # -- Enable automatic Convex function deployment via Helm hook
     # Requires secrets.convexAdminKey to be set
     enabled: true
+    # -- kubectl image for running exec commands
+    kubectlImage:
+      repository: docker.io/alpine/k8s
+      tag: "1.31.2"
+      pullPolicy: IfNotPresent
     image:
       # -- Image for running convex deploy (needs node/npm)
       repository: node
