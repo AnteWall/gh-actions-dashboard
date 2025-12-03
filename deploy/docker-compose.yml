@@ -1,0 +1,62 @@
+services:
+  # Convex Backend (self-hosted with SQLite)
+  convex-backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "3210:3210"   # Convex API
+      - "3211:3211"   # HTTP Actions
+    volumes:
+      - convex-data:/convex/data
+    environment:
+      - CONVEX_CLOUD_ORIGIN=http://127.0.0.1:3210
+      - CONVEX_SITE_ORIGIN=http://127.0.0.1:3211
+      - DOCUMENT_RETENTION_DELAY=172800
+      - RUST_LOG=info
+    healthcheck:
+      test: curl -f http://localhost:3210/version
+      interval: 5s
+      start_period: 10s
+    restart: unless-stopped
+
+  # GitHub Actions Dashboard
+  dashboard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Convex connection (points to self-hosted backend)
+      - VITE_CONVEX_URL=http://convex-backend:3210
+      # GitHub webhook secret (must match your GitHub App/webhook config)
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+    depends_on:
+      convex-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: ngrok tunnel for exposing dashboard to receive GitHub webhooks
+  # Uncomment this service and set NGROK_AUTHTOKEN in your .env file
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   command: http dashboard:3000 --log stdout
+  #   environment:
+  #     - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  #   ports:
+  #     - "4040:4040"  # ngrok web interface
+  #   depends_on:
+  #     - dashboard
+  #   restart: unless-stopped
+
+volumes:
+  convex-data:
