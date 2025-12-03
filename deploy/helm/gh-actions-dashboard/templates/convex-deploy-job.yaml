@@ -1,0 +1,84 @@
+{{- if and .Values.convex.enabled .Values.convex.deploy.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "gh-actions-dashboard.fullname" . }}-convex-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gh-actions-dashboard.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "gh-actions-dashboard.labels" . | nindent 8 }}
+        app.kubernetes.io/component: convex-deploy
+    spec:
+      {{- include "gh-actions-dashboard.imagePullSecrets" . | nindent 6 }}
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-convex
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Convex backend to be ready..."
+              until wget -q --spider {{ include "gh-actions-dashboard.convex.internalUrl" . }}/version; do
+                echo "Convex not ready yet, waiting..."
+                sleep 5
+              done
+              echo "Convex is ready!"
+      containers:
+        - name: convex-deploy
+          image: "{{ .Values.convex.deploy.image.repository }}:{{ .Values.convex.deploy.image.tag }}"
+          imagePullPolicy: {{ .Values.convex.deploy.image.pullPolicy }}
+          workingDir: /app
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "Setting up Convex project..."
+              
+              # Copy convex functions from configmap
+              mkdir -p /app/convex
+              cp /convex-functions/*.ts /app/convex/
+              cp /convex-functions/tsconfig.json /app/convex/
+              cp /convex-functions/package.json /app/
+              
+              # Install dependencies
+              echo "Installing dependencies..."
+              npm install --legacy-peer-deps
+              
+              # Deploy to Convex
+              echo "Deploying Convex functions to ${CONVEX_SELF_HOSTED_URL}..."
+              npx convex deploy --yes
+              
+              echo "Convex functions deployed successfully!"
+          env:
+            - name: CONVEX_SELF_HOSTED_URL
+              value: {{ include "gh-actions-dashboard.convex.internalUrl" . | quote }}
+            - name: CONVEX_SELF_HOSTED_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gh-actions-dashboard.secretName" . }}
+                  key: convex-admin-key
+          volumeMounts:
+            - name: convex-functions
+              mountPath: /convex-functions
+              readOnly: true
+          {{- with .Values.convex.deploy.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: convex-functions
+          configMap:
+            name: {{ include "gh-actions-dashboard.fullname" . }}-convex-functions
+{{- end }}
