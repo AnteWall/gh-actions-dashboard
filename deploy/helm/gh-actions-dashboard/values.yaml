@@ -229,7 +229,8 @@ secrets:
   githubWebhookSecret: ""
   # -- ngrok auth token (required if ngrok.enabled and not using existingSecret)
   ngrokAuthToken: ""
-  # -- Convex admin key (optional, for function deployment)
+  # -- Convex admin key (optional, auto-generated if convex.deploy.enabled)
+  # Only needed if you want to use a specific key or deploy functions manually
   convexAdminKey: ""
 
 # Ingress configuration

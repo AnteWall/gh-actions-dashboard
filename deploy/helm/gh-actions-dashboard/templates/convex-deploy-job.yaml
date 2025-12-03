@@ -34,6 +34,22 @@ spec:
                 sleep 5
               done
               echo "Convex is ready!"
+          volumeMounts:
+            - name: admin-key
+              mountPath: /admin-key
+        - name: generate-admin-key
+          image: "{{ .Values.convex.image.repository }}:{{ .Values.convex.image.tag }}"
+          imagePullPolicy: {{ .Values.convex.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "Generating Convex admin key..."
+              ./generate_admin_key.sh > /admin-key/key
+              echo "Admin key generated successfully!"
+          volumeMounts:
+            - name: admin-key
+              mountPath: /admin-key
       containers:
         - name: convex-deploy
           image: "{{ .Values.convex.deploy.image.repository }}:{{ .Values.convex.deploy.image.tag }}"
@@ -45,6 +61,9 @@ spec:
             - |
               set -e
               echo "Setting up Convex project..."
+              
+              # Read the generated admin key
+              export CONVEX_SELF_HOSTED_ADMIN_KEY=$(cat /admin-key/key)
               
               # Copy convex functions from configmap
               mkdir -p /app/convex
@@ -64,14 +83,12 @@ spec:
           env:
             - name: CONVEX_SELF_HOSTED_URL
               value: {{ include "gh-actions-dashboard.convex.internalUrl" . | quote }}
-            - name: CONVEX_SELF_HOSTED_ADMIN_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "gh-actions-dashboard.secretName" . }}
-                  key: convex-admin-key
           volumeMounts:
             - name: convex-functions
               mountPath: /convex-functions
+              readOnly: true
+            - name: admin-key
+              mountPath: /admin-key
               readOnly: true
           {{- with .Values.convex.deploy.resources }}
           resources:
@@ -81,4 +98,6 @@ spec:
         - name: convex-functions
           configMap:
             name: {{ include "gh-actions-dashboard.fullname" . }}-convex-functions
+        - name: admin-key
+          emptyDir: {}
 {{- end }}

@@ -69,22 +69,13 @@ The Convex backend is running at:
 
 {{- if .Values.convex.deploy.enabled }}
 Convex functions are being automatically deployed via a Helm hook job.
+The admin key is auto-generated during deployment.
+
 Check the deployment job status:
   kubectl get jobs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
 
 View deployment logs:
   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=convex-deploy,app.kubernetes.io/instance={{ .Release.Name }}"
-
-{{- if not .Values.secrets.convexAdminKey }}
-⚠️  WARNING: convex.deploy.enabled is true but secrets.convexAdminKey is not set!
-   The Convex function deployment will fail.
-
-   To get an admin key, first wait for Convex to start, then run:
-   kubectl exec --namespace {{ .Release.Namespace }} -it $(kubectl get pod --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=convex,app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}") -- ./generate_admin_key.sh
-
-   Then upgrade the release with the admin key:
-   helm upgrade {{ .Release.Name }} <chart> --set secrets.convexAdminKey=<your-key>
-{{- end }}
 {{- else }}
 To manually deploy Convex functions:
 1. Port-forward the Convex API:

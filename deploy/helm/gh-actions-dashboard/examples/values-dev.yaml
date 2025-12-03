@@ -17,13 +17,13 @@ ngrok:
 secrets:
   githubWebhookSecret: "your-webhook-secret"
   ngrokAuthToken: "your-ngrok-authtoken"
-  # Convex admin key - generate with: docker exec <convex-pod> ./generate_admin_key.sh
-  # Or for Kubernetes: kubectl exec <convex-pod> -- ./generate_admin_key.sh
-  convexAdminKey: "your-convex-admin-key"
+  # Note: convexAdminKey is auto-generated during deployment
+  # Only set this if you need to use a specific key
 
 # Convex configuration
 convex:
   # Auto-deploy Convex functions on install/upgrade
+  # Admin key is automatically generated
   deploy:
     enabled: true
   resources:
